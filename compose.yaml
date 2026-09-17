@@ -1,0 +1,33 @@
+services:
+  quota-api:
+    build: .
+    image: quota-reservation-api:latest
+    container_name: quota-reservation-api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      # Persistent database file inside the container.
+      QUOTA_DB_PATH: /data/quota.db
+      # Total size of the auto-created "default" pool (integer units).
+      QUOTA_POOL_TOTAL: "${QUOTA_POOL_TOTAL:-1000000}"
+      # Create the default pool on startup (true/false).
+      QUOTA_INIT_DEFAULT_POOL: "${QUOTA_INIT_DEFAULT_POOL:-true}"
+      # Default reservation TTL and maximum TTL clients may request (seconds).
+      QUOTA_DEFAULT_TTL_SECONDS: "${QUOTA_DEFAULT_TTL_SECONDS:-300}"
+      QUOTA_MAX_TTL_SECONDS: "${QUOTA_MAX_TTL_SECONDS:-86400}"
+      # How long writers wait on the SQLite lock (milliseconds).
+      QUOTA_BUSY_TIMEOUT_MS: "${QUOTA_BUSY_TIMEOUT_MS:-5000}"
+      PORT: "8000"
+      UVICORN_WORKERS: "${UVICORN_WORKERS:-1}"
+    volumes:
+      - quota-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,urllib.request,sys; sys.exit(0 if json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3))['status']=='ok' else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  quota-data:
